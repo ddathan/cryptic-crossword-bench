@@ -166,23 +166,8 @@ Be concise - provide only the answer without explanation."""
     )
 
 
-@task
-def cryptic_crossword_single(benchmark_file: str) -> Task:
-    """
-    Evaluate a model on a single cryptic crossword puzzle.
-
-    Args:
-        benchmark_file: Path to a specific benchmark JSON file.
-
-    Returns:
-        An Inspect AI Task for evaluating cryptic crossword solving.
-    """
-    return cryptic_crossword(benchmark_file=benchmark_file)
-
-
 if __name__ == "__main__":
     # Example usage
-    logger.info("Cryptic Crossword Evaluation Tasks:")
-    logger.info("- cryptic_crossword: Evaluate on all crosswords")
-    logger.info("- cryptic_crossword_single: Evaluate on a single crossword")
+    logger.info("Cryptic Crossword Evaluation Task:")
+    logger.info("- cryptic_crossword: Evaluate on all crosswords (or specify benchmark_file for a single puzzle)")
     logger.info("\nRun with: inspect eval eval/cryptic_crossword_eval.py")
