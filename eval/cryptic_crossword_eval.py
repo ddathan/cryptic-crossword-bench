@@ -10,6 +10,7 @@ from inspect_ai import Task, task
 from inspect_ai.dataset import Sample
 from inspect_ai.scorer import Score, Target, accuracy, scorer
 from inspect_ai.solver import generate, system_message
+from loguru import logger
 
 # Get the project root directory (parent of the eval folder)
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -181,7 +182,7 @@ def cryptic_crossword_single(benchmark_file: str) -> Task:
 
 if __name__ == "__main__":
     # Example usage
-    print("Cryptic Crossword Evaluation Tasks:")
-    print("- cryptic_crossword: Evaluate on all crosswords")
-    print("- cryptic_crossword_single: Evaluate on a single crossword")
-    print("\nRun with: inspect eval eval/cryptic_crossword_eval.py")
+    logger.info("Cryptic Crossword Evaluation Tasks:")
+    logger.info("- cryptic_crossword: Evaluate on all crosswords")
+    logger.info("- cryptic_crossword_single: Evaluate on a single crossword")
+    logger.info("\nRun with: inspect eval eval/cryptic_crossword_eval.py")

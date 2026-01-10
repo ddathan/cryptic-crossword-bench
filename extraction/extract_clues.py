@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import pdfplumber
+from loguru import logger
 
 
 def parse_answer_length(length_str: str) -> list[int]:
@@ -120,7 +121,7 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for pdf_path in data_dir.glob("*.pdf"):
-        print(f"Processing {pdf_path.name}...")
+        logger.info(f"Processing {pdf_path.name}...")
 
         try:
             clues_data = extract_clues_from_pdf(pdf_path)
@@ -129,11 +130,11 @@ def main() -> None:
             with open(output_path, "w") as f:
                 json.dump(clues_data, f, indent=2)
 
-            print(f"  Extracted {len(clues_data['across'])} across clues")
-            print(f"  Extracted {len(clues_data['down'])} down clues")
-            print(f"  Saved to {output_path}")
+            logger.info(f"  Extracted {len(clues_data['across'])} across clues")
+            logger.info(f"  Extracted {len(clues_data['down'])} down clues")
+            logger.info(f"  Saved to {output_path}")
         except Exception as e:
-            print(f"  Error: {e}")
+            logger.error(f"  Error: {e}")
             import traceback
 
             traceback.print_exc()

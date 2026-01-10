@@ -8,6 +8,7 @@ from typing import Any
 
 import anthropic
 from dotenv import load_dotenv
+from loguru import logger
 
 # Load environment variables from .env file
 load_dotenv()
@@ -127,7 +128,7 @@ Important:
         answers: dict[str, Any] = json.loads(json_match)
         return answers
     except json.JSONDecodeError:
-        print(f"Failed to parse JSON from response:\n{response_text}")
+        logger.error(f"Failed to parse JSON from response:\n{response_text}")
         raise
 
 
@@ -169,7 +170,7 @@ def main() -> None:
 
     # Process each completed crossword image
     for png_path in data_dir.glob("*-complete.png"):
-        print(f"\nProcessing {png_path.name}...")
+        logger.info(f"\nProcessing {png_path.name}...")
 
         # Find corresponding clues file
         # Remove "-complete" from the filename
@@ -177,7 +178,7 @@ def main() -> None:
         clues_path = extracted_dir / f"{base_name}_clues.json"
 
         if not clues_path.exists():
-            print(f"  Warning: Clues file not found at {clues_path}")
+            logger.warning(f"  Warning: Clues file not found at {clues_path}")
             continue
 
         # Load clues
@@ -186,14 +187,14 @@ def main() -> None:
 
         across_count = len(clues_data["across"])
         down_count = len(clues_data["down"])
-        print(f"  Loaded {across_count} across and {down_count} down clues")
+        logger.info(f"  Loaded {across_count} across and {down_count} down clues")
 
         # Extract answers using Claude
-        print("  Extracting answers with Claude API...")
+        logger.info("  Extracting answers with Claude API...")
         answers_data = extract_answers_with_claude(png_path, clues_data)
 
-        print(f"  Extracted {len(answers_data.get('across', {}))} across answers")
-        print(f"  Extracted {len(answers_data.get('down', {}))} down answers")
+        logger.info(f"  Extracted {len(answers_data.get('across', {}))} across answers")
+        logger.info(f"  Extracted {len(answers_data.get('down', {}))} down answers")
 
         # Combine clues and answers
         complete_data = combine_clues_and_answers(clues_data, answers_data)
@@ -203,7 +204,7 @@ def main() -> None:
         with open(output_path, "w") as f:
             json.dump(complete_data, f, indent=2)
 
-        print(f"  Saved complete data to {output_path}")
+        logger.info(f"  Saved complete data to {output_path}")
 
 
 if __name__ == "__main__":
