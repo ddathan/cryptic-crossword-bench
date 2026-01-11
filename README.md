@@ -77,6 +77,11 @@ Once you have benchmark data, evaluate LLMs using Inspect AI:
 # Run evaluation and automatically save results (recommended)
 uv run python eval/run_and_save.py --model anthropic/claude-sonnet-4-20250514
 
+# Run multiple models simultaneously
+uv run python eval/run_and_save.py \
+  -m anthropic/claude-sonnet-4-20250514 \
+  -m anthropic/claude-opus-4-20250514
+
 # Or run without saving
 uv run inspect eval eval/cryptic_crossword_eval.py --model anthropic/claude-sonnet-4-20250514
 
@@ -84,11 +89,12 @@ uv run inspect eval eval/cryptic_crossword_eval.py --model anthropic/claude-sonn
 uv run inspect view
 ```
 
-Results are automatically saved to the `results/` directory with:
-- Accuracy and standard error
-- Sample counts
-- Model and task metadata
-- Timestamps for version control
+Results are automatically saved to the `results/` directory in jsonlines format:
+- One file per model (e.g., `anthropic_claude-sonnet-4-20250514.jsonl`)
+- Each line contains a complete evaluation run
+- Accuracy and standard error from Inspect AI
+- Sample counts and metadata
+- Git-friendly format for tracking changes over time
 
 See [EVAL.md](EVAL.md) for detailed evaluation documentation.
 

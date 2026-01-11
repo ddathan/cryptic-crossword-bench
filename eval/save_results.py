@@ -5,20 +5,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import click
 from inspect_ai.log import EvalLog, read_eval_log
 from loguru import logger
-
-
-def calculate_stderr(accuracy: float, n: int) -> float:
-    """Calculate standard error for accuracy metric.
-
-    Uses the formula: stderr = sqrt(p * (1-p) / n)
-    where p is the accuracy and n is the sample size.
-    """
-    if n == 0:
-        return 0.0
-    stderr: float = (accuracy * (1 - accuracy) / n) ** 0.5
-    return stderr
 
 
 def extract_dataset_files(log: EvalLog) -> list[str]:
@@ -40,24 +29,36 @@ def extract_dataset_files(log: EvalLog) -> list[str]:
     return sorted(dataset_files)
 
 
-def save_eval_results(log_path: str | Path, output_dir: str | Path = "results") -> Path:
-    """Save evaluation results from an Inspect AI log file.
+def extract_metrics(log: EvalLog) -> dict[str, float]:
+    """Extract metrics from the evaluation log.
+
+    Uses Inspect AI's built-in metrics including stderr.
+    """
+    metrics = {}
+
+    if log.results and log.results.scores:
+        for score in log.results.scores:
+            # Store the metric value
+            metrics[score.name] = score.value
+
+            # Also store stderr if available
+            if hasattr(score, "metadata") and score.metadata:
+                if "stderr" in score.metadata:
+                    metrics[f"{score.name}_stderr"] = score.metadata["stderr"]
+
+    return metrics
+
+
+def create_result_entry(log: EvalLog, log_path: Path) -> dict[str, Any]:
+    """Create a result entry from an evaluation log.
 
     Args:
-        log_path: Path to the Inspect AI .eval log file
-        output_dir: Directory to save results (default: "results")
+        log: The evaluation log
+        log_path: Path to the log file
 
     Returns:
-        Path to the saved results file
+        Dictionary containing the result entry
     """
-    log_path = Path(log_path)
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Read the evaluation log
-    logger.info(f"Reading evaluation log from {log_path}")
-    log = read_eval_log(log_path)
-
     # Extract run ID from log
     run_id = log.eval.run_id
 
@@ -74,17 +75,8 @@ def save_eval_results(log_path: str | Path, output_dir: str | Path = "results") 
     total_samples = len(log.samples) if log.samples else 0
     completed_samples = log.results.samples_completed if log.results else 0
 
-    # Extract metrics
-    accuracy = 0.0
-    if log.results and log.results.scores:
-        # Find the accuracy score
-        for score in log.results.scores:
-            if score.name == "accuracy":
-                accuracy = score.value
-                break
-
-    # Calculate stderr
-    stderr = calculate_stderr(accuracy, completed_samples)
+    # Extract metrics (including stderr from Inspect)
+    metrics = extract_metrics(log)
 
     # Extract dataset files
     dataset_files = extract_dataset_files(log)
@@ -108,10 +100,7 @@ def save_eval_results(log_path: str | Path, output_dir: str | Path = "results") 
             "total": total_samples,
             "completed": completed_samples,
         },
-        "metrics": {
-            "accuracy": accuracy,
-            "stderr": stderr,
-        },
+        "metrics": metrics,
         "metadata": {
             "dataset_files": dataset_files,
             "eval_version": "0.1.0",
@@ -120,45 +109,185 @@ def save_eval_results(log_path: str | Path, output_dir: str | Path = "results") 
         },
     }
 
-    # Generate output filename
-    # Format: YYYY-MM-DD_HH-MM-SS_model-name_run-id.json
-    timestamp_str = datetime.fromisoformat(timestamp).strftime("%Y-%m-%d_%H-%M-%S")
+    return result
+
+
+def get_model_results_path(model: str, output_dir: Path) -> Path:
+    """Get the results file path for a specific model.
+
+    Args:
+        model: Model identifier
+        output_dir: Output directory
+
+    Returns:
+        Path to the model's results file
+    """
+    # Create a safe filename from the model name
     model_slug = model.replace("/", "_").replace(":", "_")
-    output_filename = f"{timestamp_str}_{model_slug}_{run_id[:8]}.json"
-    output_path = output_dir / output_filename
-
-    # Save results
-    with open(output_path, "w") as f:
-        json.dump(result, f, indent=2)
-
-    logger.info(f"Results saved to {output_path}")
-    logger.info(f"  Model: {model}")
-    logger.info(f"  Task: {task}")
-    logger.info(f"  Accuracy: {accuracy:.3f} ± {stderr:.3f}")
-    logger.info(f"  Samples: {completed_samples}/{total_samples}")
-
-    return output_path
+    return output_dir / f"{model_slug}.jsonl"
 
 
-def main() -> None:
-    """CLI entrypoint for saving results."""
-    import argparse
+def read_existing_results(results_path: Path) -> list[dict[str, Any]]:
+    """Read existing results from a jsonlines file.
 
-    parser = argparse.ArgumentParser(description="Save Inspect AI evaluation results")
-    parser.add_argument(
-        "--log",
-        required=True,
-        help="Path to the Inspect AI .eval log file",
+    Args:
+        results_path: Path to the results file
+
+    Returns:
+        List of existing result entries
+    """
+    if not results_path.exists():
+        return []
+
+    results = []
+    with open(results_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                results.append(json.loads(line))
+
+    return results
+
+
+def find_duplicate(
+    new_result: dict[str, Any], existing_results: list[dict[str, Any]]
+) -> int | None:
+    """Find if a duplicate result exists.
+
+    A duplicate is defined as having the same model, task, and all metadata fields
+    except for run_id, timestamp, and log_file.
+
+    Args:
+        new_result: The new result entry
+        existing_results: List of existing results
+
+    Returns:
+        Index of duplicate if found, None otherwise
+    """
+    for idx, existing in enumerate(existing_results):
+        # Check if model and task match
+        if (
+            existing.get("model") != new_result.get("model")
+            or existing.get("task") != new_result.get("task")
+        ):
+            continue
+
+        # Check if samples match
+        if existing.get("samples") != new_result.get("samples"):
+            continue
+
+        # Check if dataset files match (ignore other metadata fields that may change)
+        existing_files = existing.get("metadata", {}).get("dataset_files", [])
+        new_files = new_result.get("metadata", {}).get("dataset_files", [])
+        if existing_files != new_files:
+            continue
+
+        # Found a duplicate
+        return idx
+
+    return None
+
+
+def save_eval_results(
+    log_path: str | Path, output_dir: str | Path = "results", force: bool = False
+) -> Path:
+    """Save evaluation results from an Inspect AI log file.
+
+    Args:
+        log_path: Path to the Inspect AI .eval log file
+        output_dir: Directory to save results (default: "results")
+        force: If True, skip duplicate check and override prompt
+
+    Returns:
+        Path to the saved results file
+    """
+    log_path = Path(log_path)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Read the evaluation log
+    logger.info(f"Reading evaluation log from {log_path}")
+    log = read_eval_log(log_path)
+
+    # Create result entry
+    result = create_result_entry(log, log_path)
+
+    # Get the model-specific results file path
+    results_path = get_model_results_path(result["model"], output_dir)
+
+    # Read existing results
+    existing_results = read_existing_results(results_path)
+
+    # Check for duplicates
+    duplicate_idx = find_duplicate(result, existing_results)
+
+    if duplicate_idx is not None and not force:
+        logger.warning("Found existing result with matching attributes:")
+        logger.warning(f"  Timestamp: {existing_results[duplicate_idx]['timestamp']}")
+        logger.warning(f"  Run ID: {existing_results[duplicate_idx]['run_id'][:8]}...")
+
+        # Prompt user
+        if click.confirm(
+            "Do you want to override the previous result?", default=True
+        ):
+            # Replace the duplicate
+            existing_results[duplicate_idx] = result
+            logger.info("Overriding previous result")
+        else:
+            logger.info("Keeping previous result, appending new one")
+            existing_results.append(result)
+    else:
+        # No duplicate or force mode, append
+        if duplicate_idx is not None:
+            logger.info("Force mode: overriding previous result")
+            existing_results[duplicate_idx] = result
+        else:
+            existing_results.append(result)
+
+    # Write all results back to file
+    with open(results_path, "w") as f:
+        for entry in existing_results:
+            f.write(json.dumps(entry) + "\n")
+
+    logger.info(f"Results saved to {results_path}")
+    logger.info(f"  Model: {result['model']}")
+    logger.info(f"  Task: {result['task']}")
+
+    # Log metrics
+    metrics = result['metrics']
+    if 'accuracy' in metrics:
+        stderr_key = 'accuracy_stderr' if 'accuracy_stderr' in metrics else 'stderr'
+        stderr = metrics.get(stderr_key, 0.0)
+        logger.info(f"  Accuracy: {metrics['accuracy']:.3f} ± {stderr:.3f}")
+
+    logger.info(
+        f"  Samples: {result['samples']['completed']}/{result['samples']['total']}"
     )
-    parser.add_argument(
-        "--output-dir",
-        default="results",
-        help="Directory to save results (default: results)",
-    )
 
-    args = parser.parse_args()
+    return results_path
 
-    save_eval_results(args.log, args.output_dir)
+
+@click.command()
+@click.option(
+    "--log",
+    required=True,
+    type=click.Path(exists=True, path_type=Path),
+    help="Path to the Inspect AI .eval log file",
+)
+@click.option(
+    "--output-dir",
+    default="results",
+    type=click.Path(path_type=Path),
+    help="Directory to save results (default: results)",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Skip duplicate check and override prompt",
+)
+def main(log: Path, output_dir: Path, force: bool) -> None:
+    """Save Inspect AI evaluation results to jsonlines format."""
+    save_eval_results(log, output_dir, force)
 
 
 if __name__ == "__main__":
