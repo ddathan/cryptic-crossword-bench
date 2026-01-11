@@ -8,7 +8,7 @@ from typing import Any
 from dotenv import load_dotenv
 from inspect_ai import Task, task
 from inspect_ai.dataset import Sample
-from inspect_ai.scorer import Score, Target, accuracy, scorer
+from inspect_ai.scorer import Score, Target, accuracy, scorer, stderr
 from inspect_ai.solver import generate, system_message
 
 # Get the project root directory (parent of the eval folder)
@@ -23,7 +23,7 @@ def normalize_answer(answer: str) -> str:
     return "".join(c for c in answer.upper() if c.isalnum())
 
 
-@scorer(metrics=[accuracy()])
+@scorer(metrics=[accuracy(), stderr()])
 def cryptic_scorer() -> Callable[[Any, Target], Score]:
     """Score cryptic crossword answers with exact match after normalization."""
 
