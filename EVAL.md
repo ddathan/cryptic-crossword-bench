@@ -4,7 +4,19 @@ This project includes an Inspect AI evaluation for testing LLMs on cryptic cross
 
 ## Quick Start
 
-### Run evaluation on all crosswords
+### Run evaluation and save results (recommended)
+
+```bash
+# Run evaluation and automatically save results
+uv run python eval/run_and_save.py --model anthropic/claude-sonnet-4-20250514
+```
+
+This will:
+1. Run the evaluation
+2. Automatically save results to `results/` directory
+3. Results include accuracy, stderr, sample counts, and metadata
+
+### Run evaluation only (without saving)
 
 ```bash
 uv run inspect eval eval/cryptic_crossword_eval.py
@@ -120,9 +132,60 @@ Edit the `cryptic_scorer()` function to implement different scoring rules (e.g.,
 
 Extend the `metadata` dictionary in `load_crossword_samples()` to track additional information about each clue.
 
+## Saving and Tracking Results
+
+### Automatic Saving (Recommended)
+
+Use the `run_and_save.py` script to automatically save results after each evaluation:
+
+```bash
+# Run and save for a specific model
+uv run python eval/run_and_save.py --model anthropic/claude-sonnet-4-20250514
+
+# Run on a specific benchmark file
+uv run python eval/run_and_save.py --model anthropic/claude-opus-4-20250514 \
+  --benchmark-file data/benchmark/crossword-cryptic-20260109-80222.json
+
+# Test with limited samples
+uv run python eval/run_and_save.py --model mockllm/model --limit 10
+```
+
+### Manual Saving
+
+If you've already run an evaluation, you can save the results manually:
+
+```bash
+# Save from the latest log file
+uv run python eval/save_results.py --log logs/2026-01-10T12-34-56+00-00_cryptic-crossword_ABC123.eval
+```
+
+### Results Format
+
+Results are saved in `results/` as JSON files with:
+- **Accuracy**: Overall accuracy score
+- **Standard Error**: Statistical uncertainty of the accuracy
+- **Sample Counts**: Total and completed samples
+- **Metadata**: Model, task, timestamp, dataset files, versions
+
+Example filename: `2026-01-10_12-34-56_anthropic_claude-sonnet-4-20250514_abc12345.json`
+
+See `results/README.md` for detailed format documentation.
+
+### Viewing Saved Results
+
+```bash
+# List all saved results
+ls results/*.json
+
+# View a specific result
+cat results/2026-01-10_12-34-56_anthropic_claude-sonnet-4-20250514_abc12345.json
+```
+
+The results are version-controlled in git, making it easy to track model performance over time.
+
 ## View Results
 
-After running an evaluation, view the results:
+After running an evaluation, view the results in Inspect AI's web interface:
 
 ```bash
 uv run inspect view

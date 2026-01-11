@@ -74,19 +74,21 @@ uv run python -m extraction.extract_answers
 Once you have benchmark data, evaluate LLMs using Inspect AI:
 
 ```bash
-# Run evaluation on all crosswords
-uv run inspect eval eval/cryptic_crossword_eval.py
+# Run evaluation and automatically save results (recommended)
+uv run python eval/run_and_save.py --model anthropic/claude-sonnet-4-20250514
 
-# Run on a specific crossword
-uv run inspect eval eval/cryptic_crossword_eval.py@cryptic_crossword_single \
-  --benchmark_file data/benchmark/crossword-cryptic-20260109-80222.json
-
-# Use a specific model (requires ANTHROPIC_API_KEY)
+# Or run without saving
 uv run inspect eval eval/cryptic_crossword_eval.py --model anthropic/claude-sonnet-4-20250514
 
 # View results in web UI
 uv run inspect view
 ```
+
+Results are automatically saved to the `results/` directory with:
+- Accuracy and standard error
+- Sample counts
+- Model and task metadata
+- Timestamps for version control
 
 See [EVAL.md](EVAL.md) for detailed evaluation documentation.
 
@@ -139,7 +141,10 @@ cryptic-crossword-eval/
 │   └── run_extraction.py          # Main extraction pipeline
 ├── eval/
 │   ├── cryptic_crossword_eval.py  # Inspect AI evaluation
+│   ├── run_and_save.py            # Run evaluation and save results
+│   ├── save_results.py            # Save results from eval logs
 │   └── run_eval_example.py        # Example: Run evaluation programmatically
+├── results/                       # Saved evaluation results (version controlled)
 ├── pyproject.toml                 # Project dependencies
 ├── README.md                      # This file
 └── EVAL.md                        # Evaluation documentation
