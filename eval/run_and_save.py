@@ -19,12 +19,43 @@ from eval.save_results import save_eval_results  # noqa: E402
 load_dotenv(PROJECT_ROOT / ".env")
 
 
+def parse_model_arg(arg: str) -> tuple[str, str | int | float | bool]:
+    """Parse a model argument string in key=value format.
+
+    Attempts to parse the value as: bool, int, float, or string.
+    """
+    if "=" not in arg:
+        raise ValueError(f"Invalid model arg format: {arg}. Expected key=value")
+
+    key, value = arg.split("=", 1)
+
+    # Try to parse as bool
+    if value.lower() in ("true", "false"):
+        return key, value.lower() == "true"
+
+    # Try to parse as int
+    try:
+        return key, int(value)
+    except ValueError:
+        pass
+
+    # Try to parse as float
+    try:
+        return key, float(value)
+    except ValueError:
+        pass
+
+    # Return as string
+    return key, value
+
+
 def run_and_save_eval(
     models: list[str],
     task: str = "cryptic_crossword",
     limit: int | None = None,
     benchmark_file: str | None = None,
     force: bool = False,
+    model_args: dict[str, str | int | float | bool] | None = None,
 ) -> None:
     """Run an evaluation and save the results.
 
@@ -34,9 +65,12 @@ def run_and_save_eval(
         limit: Optional limit on number of samples
         benchmark_file: Optional path to specific benchmark file
         force: If True, skip duplicate check and override prompt
+        model_args: Optional dict of model arguments (e.g., thinking budget)
     """
     logger.info(f"Running evaluation: {task}")
     logger.info(f"Models: {', '.join(models)}")
+    if model_args:
+        logger.info(f"Model args: {model_args}")
     logger.info("=" * 70)
 
     # Prepare task kwargs
@@ -44,13 +78,20 @@ def run_and_save_eval(
     if benchmark_file:
         task_kwargs["benchmark_file"] = benchmark_file
 
+    # Prepare eval kwargs
+    eval_kwargs: dict[str, object] = {
+        "model": models,
+        "limit": limit,
+    }
+    if model_args:
+        eval_kwargs["model_args"] = model_args
+
     # Run the evaluation with all models
     # Inspect AI supports passing a list of models and will run them in parallel
     try:
         logs = inspect_eval(
             cryptic_crossword(**task_kwargs),
-            model=models,
-            limit=limit,
+            **eval_kwargs,  # type: ignore[arg-type]
         )
     except Exception as e:
         logger.error(f"Evaluation failed: {e}")
@@ -119,12 +160,20 @@ def run_and_save_eval(
     is_flag=True,
     help="Skip duplicate check and override prompt",
 )
+@click.option(
+    "--model-arg",
+    "-a",
+    "model_args_raw",
+    multiple=True,
+    help="Model argument in key=value format. Can be specified multiple times.",
+)
 def main(
     models: tuple[str, ...],
     task: str,
     limit: int | None,
     benchmark_file: str | None,
     force: bool,
+    model_args_raw: tuple[str, ...],
 ) -> None:
     """Run evaluation and save results.
 
@@ -134,7 +183,8 @@ def main(
       python eval/run_and_save.py --model anthropic/claude-sonnet-4-20250514
 
       # Run multiple models simultaneously
-      python eval/run_and_save.py -m anthropic/claude-sonnet-4-20250514 -m anthropic/claude-opus-4-20250514
+      python eval/run_and_save.py -m anthropic/claude-sonnet-4-20250514 \\
+        -m anthropic/claude-opus-4-20250514
 
       # Run on a specific benchmark file
       python eval/run_and_save.py -m anthropic/claude-opus-4-20250514 \\
@@ -142,13 +192,26 @@ def main(
 
       # Run with limited samples for testing
       python eval/run_and_save.py -m mockllm/model --limit 10
+
+      # Run with model arguments (e.g., thinking budget)
+      python eval/run_and_save.py -m anthropic/claude-sonnet-4-20250514 \\
+        --model-arg thinking_budget=10000
     """
+    # Parse model args
+    model_args: dict[str, str | int | float | bool] | None = None
+    if model_args_raw:
+        model_args = {}
+        for arg in model_args_raw:
+            key, value = parse_model_arg(arg)
+            model_args[key] = value
+
     run_and_save_eval(
         models=list(models),
         task=task,
         limit=limit,
         benchmark_file=benchmark_file,
         force=force,
+        model_args=model_args,
     )
 
 

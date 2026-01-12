@@ -153,6 +153,17 @@ uv run python eval/run_and_save.py \
   -m anthropic/claude-sonnet-4-20250514 \
   -m anthropic/claude-opus-4-20250514
 
+# Run with model arguments (e.g., thinking budget)
+uv run python eval/run_and_save.py \
+  --model anthropic/claude-sonnet-4-20250514 \
+  --model-arg thinking_budget=10000
+
+# Run with multiple model arguments
+uv run python eval/run_and_save.py \
+  --model anthropic/claude-sonnet-4-20250514 \
+  -a thinking_budget=10000 \
+  -a temperature=0.5
+
 # Run on a specific benchmark file
 uv run python eval/run_and_save.py --model anthropic/claude-opus-4-20250514 \
   --benchmark-file data/benchmark/crossword-cryptic-20260109-80222.json
@@ -181,7 +192,8 @@ uv run python eval/save_results.py --log logs/LATEST.eval --force
 Results are saved in `results/` as **jsonlines** files (`.jsonl`), with one file per model:
 - **Format**: One JSON object per line, each representing a single evaluation run
 - **Filename**: Based on model identifier (e.g., `anthropic_claude-sonnet-4-20250514.jsonl`)
-- **Deduplication**: Automatically detects and prompts for duplicate results
+- **Deduplication**: Automatically detects and prompts for duplicate results (same model, task, model_args)
+- **Model Args**: Stores model arguments (e.g., thinking budget) for each run
 - **Metrics**: Accuracy and standard error from Inspect AI's built-in metrics
 - **Metadata**: Model, task, timestamp, dataset files, versions
 

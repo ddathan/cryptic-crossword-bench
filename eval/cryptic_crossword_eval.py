@@ -169,5 +169,8 @@ Be concise - provide only the answer without explanation."""
 if __name__ == "__main__":
     # Example usage
     logger.info("Cryptic Crossword Evaluation Task:")
-    logger.info("- cryptic_crossword: Evaluate on all crosswords (or specify benchmark_file for a single puzzle)")
+    logger.info(
+        "- cryptic_crossword: Evaluate on all crosswords "
+        "(or specify benchmark_file for a single puzzle)"
+    )
     logger.info("\nRun with: inspect eval eval/cryptic_crossword_eval.py")

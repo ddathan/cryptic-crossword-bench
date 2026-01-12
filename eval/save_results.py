@@ -90,6 +90,9 @@ def create_result_entry(log: EvalLog, log_path: Path) -> dict[str, Any]:
     except (ImportError, AttributeError):
         pass
 
+    # Extract model_args from log
+    model_args = log.eval.model_args if log.eval.model_args else {}
+
     # Create result structure
     result: dict[str, Any] = {
         "run_id": run_id,
@@ -101,6 +104,7 @@ def create_result_entry(log: EvalLog, log_path: Path) -> dict[str, Any]:
             "completed": completed_samples,
         },
         "metrics": metrics,
+        "model_args": model_args,
         "metadata": {
             "dataset_files": dataset_files,
             "eval_version": "0.1.0",
@@ -140,7 +144,7 @@ def read_existing_results(results_path: Path) -> list[dict[str, Any]]:
         return []
 
     results = []
-    with open(results_path, "r") as f:
+    with open(results_path) as f:
         for line in f:
             line = line.strip()
             if line:
@@ -154,8 +158,8 @@ def find_duplicate(
 ) -> int | None:
     """Find if a duplicate result exists.
 
-    A duplicate is defined as having the same model, task, and all metadata fields
-    except for run_id, timestamp, and log_file.
+    A duplicate is defined as having the same model, task, model_args, and dataset files.
+    Runs with different model_args (e.g., different thinking budgets) are not duplicates.
 
     Args:
         new_result: The new result entry
@@ -166,14 +170,19 @@ def find_duplicate(
     """
     for idx, existing in enumerate(existing_results):
         # Check if model and task match
-        if (
-            existing.get("model") != new_result.get("model")
-            or existing.get("task") != new_result.get("task")
-        ):
+        if existing.get("model") != new_result.get("model") or existing.get(
+            "task"
+        ) != new_result.get("task"):
             continue
 
         # Check if samples match
         if existing.get("samples") != new_result.get("samples"):
+            continue
+
+        # Check if model_args match (different args = different run)
+        existing_args = existing.get("model_args", {})
+        new_args = new_result.get("model_args", {})
+        if existing_args != new_args:
             continue
 
         # Check if dataset files match (ignore other metadata fields that may change)
@@ -227,9 +236,7 @@ def save_eval_results(
         logger.warning(f"  Run ID: {existing_results[duplicate_idx]['run_id'][:8]}...")
 
         # Prompt user
-        if click.confirm(
-            "Do you want to override the previous result?", default=True
-        ):
+        if click.confirm("Do you want to override the previous result?", default=True):
             # Replace the duplicate
             existing_results[duplicate_idx] = result
             logger.info("Overriding previous result")
@@ -252,17 +259,17 @@ def save_eval_results(
     logger.info(f"Results saved to {results_path}")
     logger.info(f"  Model: {result['model']}")
     logger.info(f"  Task: {result['task']}")
+    if result.get("model_args"):
+        logger.info(f"  Model args: {result['model_args']}")
 
     # Log metrics
-    metrics = result['metrics']
-    if 'accuracy' in metrics:
-        stderr_key = 'accuracy_stderr' if 'accuracy_stderr' in metrics else 'stderr'
+    metrics = result["metrics"]
+    if "accuracy" in metrics:
+        stderr_key = "accuracy_stderr" if "accuracy_stderr" in metrics else "stderr"
         stderr = metrics.get(stderr_key, 0.0)
         logger.info(f"  Accuracy: {metrics['accuracy']:.3f} ± {stderr:.3f}")
 
-    logger.info(
-        f"  Samples: {result['samples']['completed']}/{result['samples']['total']}"
-    )
+    logger.info(f"  Samples: {result['samples']['completed']}/{result['samples']['total']}")
 
     return results_path
 
