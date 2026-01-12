@@ -30,6 +30,9 @@ Each line in a jsonlines file contains a JSON object with the following structur
     "accuracy": 0.137,
     "accuracy_stderr": 0.048
   },
+  "model_args": {
+    "thinking_budget": 10000
+  },
   "metadata": {
     "dataset_files": [
       "data/benchmark/crossword-cryptic-20260109-80222.json",
@@ -54,6 +57,9 @@ Each line in a jsonlines file contains a JSON object with the following structur
   - `accuracy`: Overall accuracy score (0-1)
   - `accuracy_stderr`: Standard error of the accuracy metric (from Inspect AI)
   - Additional metrics may be present depending on the evaluation
+- `model_args`: Model arguments passed to the evaluation (e.g., thinking budget)
+  - Empty object `{}` if no model args were specified
+  - Used for deduplication: runs with different model_args are not considered duplicates
 - `metadata`: Additional metadata about the run
   - `dataset_files`: List of benchmark files used
   - `eval_version`: Version of the evaluation code
@@ -86,6 +92,11 @@ uv run python eval/run_and_save.py \
   -m anthropic/claude-sonnet-4-20250514 \
   -m anthropic/claude-opus-4-20250514
 
+# Run with model arguments (e.g., thinking budget)
+uv run python eval/run_and_save.py \
+  --model anthropic/claude-sonnet-4-20250514 \
+  --model-arg thinking_budget=10000
+
 # Run with a specific benchmark file
 uv run python eval/run_and_save.py \
   --model anthropic/claude-sonnet-4-20250514 \
@@ -106,7 +117,7 @@ uv run python eval/save_results.py --log logs/LATEST_LOG_FILE.eval
 
 ### Duplicate Detection
 
-The saving system automatically detects duplicate results (same model, task, samples, and dataset files). When a duplicate is found:
+The saving system automatically detects duplicate results (same model, task, model_args, samples, and dataset files). Runs with different model_args are considered distinct and will not trigger duplicate detection. When a duplicate is found:
 
 1. You'll be prompted whether to override the previous result (default: yes)
 2. If you choose "yes", the old result is replaced
