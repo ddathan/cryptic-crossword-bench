@@ -19,3 +19,6 @@ data/benchmark/
 # Inspect AI logs
 logs/
 *.eval
+
+# Generated web files
+web/results.json
