@@ -3,8 +3,6 @@
 import json
 from pathlib import Path
 
-from loguru import logger
-
 # Paths
 PROJECT_ROOT = Path(__file__).parent.parent
 RESULTS_DIR = PROJECT_ROOT / "results"
@@ -49,7 +47,7 @@ def load_all_results() -> list[dict]:
                         result = json.loads(line)
                         all_results.append(result)
                     except json.JSONDecodeError:
-                        logger.warning(f"Could not parse line in {jsonl_file}")
+                        print(f"Warning: Could not parse line in {jsonl_file}")
 
     return all_results
 
@@ -121,15 +119,15 @@ def build_web_results() -> dict:
 
 def main() -> None:
     """Generate results.json for the web dashboard."""
-    logger.info(f"Loading results from {RESULTS_DIR}")
+    print(f"Loading results from {RESULTS_DIR}")
     web_data = build_web_results()
 
-    logger.info(f"Found {web_data['total_results']} unique model configurations")
+    print(f"Found {web_data['total_results']} unique model configurations")
 
     with open(OUTPUT_FILE, "w") as f:
         json.dump(web_data, f, indent=2)
 
-    logger.info(f"Results written to {OUTPUT_FILE}")
+    print(f"Results written to {OUTPUT_FILE}")
 
 
 if __name__ == "__main__":
