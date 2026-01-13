@@ -34,17 +34,16 @@ def extract_metrics(log: EvalLog) -> dict[str, float]:
 
     Uses Inspect AI's built-in metrics including stderr.
     """
-    metrics = {}
+    metrics: dict[str, float] = {}
 
     if log.results and log.results.scores:
         for score in log.results.scores:
-            # Store the metric value
-            metrics[score.name] = score.value
-
-            # Also store stderr if available
-            if hasattr(score, "metadata") and score.metadata:
-                if "stderr" in score.metadata:
-                    metrics[f"{score.name}_stderr"] = score.metadata["stderr"]
+            # EvalScore has a metrics dict containing EvalMetric objects
+            if hasattr(score, "metrics") and score.metrics:
+                for metric_name, metric in score.metrics.items():
+                    # EvalMetric has a value attribute
+                    if hasattr(metric, "value"):
+                        metrics[metric_name] = metric.value
 
     return metrics
 
@@ -73,7 +72,7 @@ def create_result_entry(log: EvalLog, log_path: Path) -> dict[str, Any]:
 
     # Extract sample counts
     total_samples = len(log.samples) if log.samples else 0
-    completed_samples = log.results.samples_completed if log.results else 0
+    completed_samples = log.results.completed_samples if log.results else 0
 
     # Extract metrics (including stderr from Inspect)
     metrics = extract_metrics(log)

@@ -28,7 +28,7 @@ def main() -> None:
     logger.info(f"Task: {log.eval.task}")
     logger.info(f"Model: {log.eval.model}")
     logger.info(f"Total samples: {log.samples}")
-    logger.info(f"Completed samples: {log.results.samples_completed}")
+    logger.info(f"Completed samples: {log.results.completed_samples}")
 
     # Print scores
     if log.results.scores:
