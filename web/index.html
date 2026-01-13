@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cryptic Crossword Evaluation Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Cryptic Crossword Evaluation Benchmark</h1>
+            <p class="subtitle">Evaluating Large Language Models on Cryptic Crossword Solving</p>
+        </header>
+
+        <section class="abstract">
+            <h2>About This Benchmark</h2>
+            <p>
+                Cryptic crosswords represent a unique challenge for language models, requiring
+                sophisticated wordplay understanding, lateral thinking, and knowledge of
+                cryptic clue conventions. Unlike standard crosswords that test factual recall,
+                cryptic clues involve anagrams, hidden words, double definitions, and other
+                linguistic puzzles.
+            </p>
+            <p>
+                This benchmark evaluates LLM performance on cryptic crossword clues extracted
+                from real puzzles. Each model is presented with a clue and the answer length,
+                and must produce the correct answer. Accuracy is measured as exact match
+                (case-insensitive, alphanumeric only).
+            </p>
+        </section>
+
+        <section class="results-section">
+            <h2>Results</h2>
+
+            <div id="loading" class="loading">
+                <p>Loading results...</p>
+            </div>
+
+            <div id="no-results" class="no-results" style="display: none;">
+                <p>No evaluation results available yet.</p>
+                <p class="hint">Run an evaluation to see results here:</p>
+                <code>uv run python eval/run_and_save.py --model anthropic/claude-sonnet-4-20250514</code>
+            </div>
+
+            <div id="results-content" style="display: none;">
+                <div class="chart-container">
+                    <canvas id="accuracyChart"></canvas>
+                </div>
+
+                <div class="table-container">
+                    <table id="results-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Model</th>
+                                <th>Accuracy</th>
+                                <th>Samples</th>
+                                <th>Model Args</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section class="methodology">
+            <h2>Methodology</h2>
+            <ul>
+                <li><strong>Dataset:</strong> Cryptic crossword clues from published puzzles</li>
+                <li><strong>Prompt:</strong> Each clue is presented with the answer length hint</li>
+                <li><strong>Scoring:</strong> Exact match after normalisation (case-insensitive, alphanumeric only)</li>
+                <li><strong>Error bars:</strong> Standard error calculated as sqrt(p*(1-p)/n)</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p>
+                <a href="https://github.com/ddathan/cryptic-crossword-bench">View on GitHub</a>
+            </p>
+            <p class="generated-at" id="generated-at"></p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
