@@ -9,6 +9,97 @@ import click
 from inspect_ai.log import EvalLog, read_eval_log
 from loguru import logger
 
+# API pricing per 1M tokens (USD)
+# Format: {model_pattern: {"input": price, "output": price}}
+# Patterns are matched from start of model name
+MODEL_PRICING: dict[str, dict[str, float]] = {
+    # Anthropic models
+    "anthropic/claude-opus-4": {"input": 15.0, "output": 75.0},
+    "anthropic/claude-sonnet-4": {"input": 3.0, "output": 15.0},
+    "anthropic/claude-haiku-4": {"input": 0.80, "output": 4.0},
+    "anthropic/claude-3-opus": {"input": 15.0, "output": 75.0},
+    "anthropic/claude-3-sonnet": {"input": 3.0, "output": 15.0},
+    "anthropic/claude-3-haiku": {"input": 0.25, "output": 1.25},
+    # OpenAI models
+    "openai/gpt-5": {"input": 2.0, "output": 8.0},
+    "openai/gpt-4o": {"input": 2.50, "output": 10.0},
+    "openai/gpt-4.1": {"input": 2.0, "output": 8.0},
+    "openai/o3": {"input": 2.0, "output": 8.0},
+    "openai/o1": {"input": 15.0, "output": 60.0},
+    # Google models
+    "google/gemini-3": {"input": 1.25, "output": 10.0},
+    "google/gemini-2.5-pro": {"input": 1.25, "output": 10.0},
+    "google/gemini-2.5-flash": {"input": 0.15, "output": 0.60},
+    "google/gemini-2.0": {"input": 0.10, "output": 0.40},
+    "google/gemini-1.5-pro": {"input": 1.25, "output": 5.0},
+    "google/gemini-1.5-flash": {"input": 0.075, "output": 0.30},
+}
+
+
+def get_model_pricing(model: str) -> dict[str, float] | None:
+    """Get pricing for a model based on pattern matching.
+
+    Args:
+        model: Model identifier (e.g., "anthropic/claude-sonnet-4-20250514")
+
+    Returns:
+        Dict with "input" and "output" prices per 1M tokens, or None if not found
+    """
+    for pattern, pricing in MODEL_PRICING.items():
+        if model.startswith(pattern):
+            return pricing
+    return None
+
+
+def extract_token_usage(log: EvalLog) -> dict[str, int]:
+    """Extract token usage from the evaluation log.
+
+    Args:
+        log: The evaluation log
+
+    Returns:
+        Dictionary with input_tokens, output_tokens, and total_tokens
+    """
+    usage: dict[str, int] = {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+    }
+
+    if not log.stats or not log.stats.model_usage:
+        return usage
+
+    # Sum up usage across all models (usually just one)
+    for model_usage in log.stats.model_usage.values():
+        usage["input_tokens"] += model_usage.input_tokens or 0
+        usage["output_tokens"] += model_usage.output_tokens or 0
+        usage["total_tokens"] += model_usage.total_tokens or 0
+        if model_usage.reasoning_tokens:
+            usage["reasoning_tokens"] += model_usage.reasoning_tokens
+
+    return usage
+
+
+def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float | None:
+    """Calculate the cost for a given token usage.
+
+    Args:
+        model: Model identifier
+        input_tokens: Number of input tokens
+        output_tokens: Number of output tokens
+
+    Returns:
+        Cost in USD, or None if pricing not available
+    """
+    pricing = get_model_pricing(model)
+    if not pricing:
+        return None
+
+    input_cost = (input_tokens / 1_000_000) * pricing["input"]
+    output_cost = (output_tokens / 1_000_000) * pricing["output"]
+    return input_cost + output_cost
+
 
 def extract_dataset_files(log: EvalLog) -> list[str]:
     """Extract the dataset files used in the evaluation from sample metadata."""
@@ -92,6 +183,12 @@ def create_result_entry(log: EvalLog, log_path: Path) -> dict[str, Any]:
     # Extract model_args from log
     model_args = log.eval.model_args if log.eval.model_args else {}
 
+    # Extract token usage
+    token_usage = extract_token_usage(log)
+
+    # Calculate cost
+    cost = calculate_cost(model, token_usage["input_tokens"], token_usage["output_tokens"])
+
     # Create result structure
     result: dict[str, Any] = {
         "run_id": run_id,
@@ -104,6 +201,13 @@ def create_result_entry(log: EvalLog, log_path: Path) -> dict[str, Any]:
         },
         "metrics": metrics,
         "model_args": model_args,
+        "usage": {
+            "input_tokens": token_usage["input_tokens"],
+            "output_tokens": token_usage["output_tokens"],
+            "total_tokens": token_usage["total_tokens"],
+            "reasoning_tokens": token_usage["reasoning_tokens"],
+            "cost_usd": cost,
+        },
         "metadata": {
             "dataset_files": dataset_files,
             "eval_version": "0.1.0",
@@ -283,6 +387,15 @@ def save_eval_results(
         logger.info(f"  Accuracy: {metrics['accuracy']:.3f} ± {stderr:.3f}")
 
     logger.info(f"  Samples: {result['samples']['completed']}/{result['samples']['total']}")
+
+    # Log token usage and cost
+    usage = result.get("usage", {})
+    if usage.get("total_tokens", 0) > 0:
+        logger.info(f"  Tokens: {usage['input_tokens']:,} in / {usage['output_tokens']:,} out")
+        if usage.get("reasoning_tokens", 0) > 0:
+            logger.info(f"  Reasoning tokens: {usage['reasoning_tokens']:,}")
+        if usage.get("cost_usd") is not None:
+            logger.info(f"  Cost: ${usage['cost_usd']:.4f}")
 
     return results_path
 

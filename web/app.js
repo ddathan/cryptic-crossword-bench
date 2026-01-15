@@ -52,6 +52,23 @@ function formatModelArgs(args) {
 }
 
 /**
+ * Format token count for display
+ */
+function formatTokens(tokens) {
+    if (!tokens || tokens === 0) return '-';
+    return tokens.toLocaleString();
+}
+
+/**
+ * Format cost in USD for display
+ */
+function formatCost(cost) {
+    if (cost === null || cost === undefined) return '-';
+    if (cost < 0.01) return '<$0.01';
+    return '$' + cost.toFixed(2);
+}
+
+/**
  * Get rank class for styling
  */
 function getRankClass(rank) {
@@ -79,8 +96,8 @@ function createTable(results) {
                 <span class="accuracy-value">${formatAccuracy(result.accuracy)}</span>
                 <span class="stderr">&plusmn; ${formatStderr(result.stderr)}</span>
             </td>
-            <td class="samples">${result.samples_completed}/${result.samples_total}</td>
-            <td class="model-args" title="${formatModelArgs(result.model_args)}">${formatModelArgs(result.model_args)}</td>
+            <td class="tokens">${formatTokens(result.total_tokens)}</td>
+            <td class="cost">${formatCost(result.cost_usd)}</td>
             <td class="date">${formatDate(result.timestamp)}</td>
         `;
 

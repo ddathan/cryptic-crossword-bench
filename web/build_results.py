@@ -114,6 +114,7 @@ def build_web_results() -> dict:
     for result in deduplicated:
         model_args = result.get("model_args", {})
         metrics = result.get("metrics", {})
+        usage = result.get("usage", {})
 
         web_result = {
             "model": result.get("model", "Unknown"),
@@ -125,6 +126,12 @@ def build_web_results() -> dict:
             "model_args": model_args,
             "timestamp": result.get("timestamp", ""),
             "run_id": result.get("run_id", "")[:8],
+            # Token usage and cost
+            "input_tokens": usage.get("input_tokens", 0),
+            "output_tokens": usage.get("output_tokens", 0),
+            "total_tokens": usage.get("total_tokens", 0),
+            "reasoning_tokens": usage.get("reasoning_tokens", 0),
+            "cost_usd": usage.get("cost_usd"),
         }
         web_results.append(web_result)
 
