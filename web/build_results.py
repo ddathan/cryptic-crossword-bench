@@ -31,9 +31,21 @@ def create_result_key(result: dict) -> str:
     return f"{model}|{args_str}"
 
 
+def is_complete_run(result: dict) -> bool:
+    """Check if a result represents a complete evaluation run."""
+    samples = result.get("samples", {})
+    total: int = samples.get("total", 0)
+    completed: int = samples.get("completed", 0)
+    return total > 0 and completed == total
+
+
 def load_all_results() -> list[dict]:
-    """Load all results from JSONL files in the results directory."""
+    """Load all results from JSONL files in the results directory.
+
+    Only loads complete runs (where completed == total samples).
+    """
     all_results: list[dict] = []
+    skipped_incomplete = 0
 
     if not RESULTS_DIR.exists():
         return all_results
@@ -45,9 +57,15 @@ def load_all_results() -> list[dict]:
                 if line:
                     try:
                         result = json.loads(line)
-                        all_results.append(result)
+                        if is_complete_run(result):
+                            all_results.append(result)
+                        else:
+                            skipped_incomplete += 1
                     except json.JSONDecodeError:
                         print(f"Warning: Could not parse line in {jsonl_file}")
+
+    if skipped_incomplete > 0:
+        print(f"Skipped {skipped_incomplete} incomplete run(s)")
 
     return all_results
 

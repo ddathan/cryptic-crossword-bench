@@ -110,6 +110,7 @@ def run_and_save_eval(
     # Save results for each log
     logger.info("\nSaving results...")
     saved_paths = []
+    skipped_count = 0
 
     for log in logs:
         log_path = log.location
@@ -117,17 +118,25 @@ def run_and_save_eval(
 
         try:
             results_path = save_eval_results(log_path, force=force)
-            saved_paths.append(results_path)
+            if results_path is not None:
+                saved_paths.append(results_path)
+            else:
+                skipped_count += 1
         except Exception as e:
             logger.error(f"Failed to save results for {log_path}: {e}")
             sys.exit(1)
 
     # Summary
     logger.info("\n" + "=" * 70)
-    logger.info("✓ All results saved successfully!")
-    logger.info(f"  Saved {len(saved_paths)} result file(s):")
-    for path in saved_paths:
-        logger.info(f"    - {path}")
+    if saved_paths:
+        logger.info("✓ Results saved successfully!")
+        logger.info(f"  Saved {len(saved_paths)} result file(s):")
+        for path in saved_paths:
+            logger.info(f"    - {path}")
+    if skipped_count > 0:
+        logger.info(f"  Skipped {skipped_count} incomplete run(s)")
+    if not saved_paths and skipped_count > 0:
+        logger.warning("No complete runs to save.")
     logger.info("=" * 70)
 
 
