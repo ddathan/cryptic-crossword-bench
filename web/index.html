@@ -10,24 +10,20 @@
 <body>
     <div class="container">
         <header>
-            <h1>Cryptic Crossword Evaluation Benchmark</h1>
+            <h1>Cryptic Crossword Benchmark</h1>
             <p class="subtitle">Evaluating Large Language Models on Cryptic Crossword Solving</p>
         </header>
 
         <section class="abstract">
             <h2>About This Benchmark</h2>
             <p>
-                Cryptic crosswords represent a unique challenge for language models, requiring
-                sophisticated wordplay understanding, lateral thinking, and knowledge of
-                cryptic clue conventions. Unlike standard crosswords that test factual recall,
-                cryptic clues involve anagrams, hidden words, double definitions, and other
-                linguistic puzzles.
+                This benchmark evaluates how well LLMs can solve cryptic crossword clues. At the start of 2025 I decided to try to get better at cryptic crosswords. Naturally, I attempted to use LLMs to help me by getting them to explain the clues and answers when I was stuck. What I found was that (at that time) LLMs were pretty bad at solving cryptic crosswords - they would often take illogical reasoning steps resulting in the wrong answer, or even when given the answer they would come up with spurious reasoning as to how to get there.
             </p>
             <p>
-                This benchmark evaluates LLM performance on cryptic crossword clues extracted
-                from real puzzles. Each model is presented with a clue and the answer length,
-                and must produce the correct answer. Accuracy is measured as exact match
-                (case-insensitive, alphanumeric only).
+                Solving cryptic crosswords requires a combination of knowledge & lateral thinking. Each clue is a short sentence with some part containing the <i>definition</i> for the answer, and the rest containing <i>wordplay</i> of some sort, usually made up of <i>indicator </i> words donating a manipulation to do (eg. anagram, take the first letters, etc.) and <i>fodder</i> - the word(s) to apply the manipulation to. Therefore they are a good testbed to assess a model's ability to reason and think logically using some amount of world knowledge. Although cryptic crosswords often invovle knowing specific terminology or tricks, one would expect current LLMs to have stored this and any other general knowledge required. Therefore this tests the ability of applying that base knowledge in a logical way to solve the puzzle.
+            </p>
+            <p>
+                Being able to solve cryptic crossword clues is not sufficient to demonstrate intelligence - it tests applying laterial thinking in a very specific instance and there are many other attributes of intellegince it does not test. However, I would argue that is is at least indicative of one core attribute of intelligence: the ability to reason and think logically using a base set of knowledge.
             </p>
         </section>
 
@@ -71,10 +67,9 @@
         <section class="methodology">
             <h2>Methodology</h2>
             <ul>
-                <li><strong>Dataset:</strong> Cryptic crossword clues from published puzzles</li>
-                <li><strong>Prompt:</strong> Each clue is presented with the answer length hint</li>
-                <li><strong>Scoring:</strong> Exact match after normalisation (case-insensitive, alphanumeric only)</li>
-                <li><strong>Error bars:</strong> Standard error calculated as sqrt(p*(1-p)/n)</li>
+                <li><strong>Dataset:</strong> Cryptic crossword clues were taken from The Times during January 2026. They include 4 Quick Cryptic puzzles and 4 full Cryptic puzzles, giving a total of 195 clues.</li>
+                <li><strong>Prompt:</strong> Each clue is presented with the answer length hint. The model is then asked to solve the clue and provide the answer.</li>
+                <li><strong>Scoring:</strong> Each clue is scored according to whether it is an exact match to the ground truth answer after normalisation (case-insensitive, alphanumeric only). The accuracy is the percentage of clues that are solved correctly.</li>
             </ul>
         </section>
 

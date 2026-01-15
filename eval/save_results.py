@@ -197,17 +197,21 @@ def find_duplicate(
 
 
 def save_eval_results(
-    log_path: str | Path, output_dir: str | Path = "results", force: bool = False
-) -> Path:
+    log_path: str | Path,
+    output_dir: str | Path = "results",
+    force: bool = False,
+    include_incomplete: bool = False,
+) -> Path | None:
     """Save evaluation results from an Inspect AI log file.
 
     Args:
         log_path: Path to the Inspect AI .eval log file
         output_dir: Directory to save results (default: "results")
         force: If True, skip duplicate check and override prompt
+        include_incomplete: If True, save incomplete runs (default: False)
 
     Returns:
-        Path to the saved results file
+        Path to the saved results file, or None if skipped
     """
     log_path = Path(log_path)
     output_dir = Path(output_dir)
@@ -219,6 +223,16 @@ def save_eval_results(
 
     # Create result entry
     result = create_result_entry(log, log_path)
+
+    # Check if run is complete
+    total = result["samples"]["total"]
+    completed = result["samples"]["completed"]
+    if completed < total and not include_incomplete:
+        logger.warning(
+            f"Skipping incomplete run: {completed}/{total} samples completed. "
+            f"Use --include-incomplete to save anyway."
+        )
+        return None
 
     # Get the model-specific results file path
     results_path = get_model_results_path(result["model"], output_dir)
@@ -291,9 +305,14 @@ def save_eval_results(
     is_flag=True,
     help="Skip duplicate check and override prompt",
 )
-def main(log: Path, output_dir: Path, force: bool) -> None:
+@click.option(
+    "--include-incomplete",
+    is_flag=True,
+    help="Include incomplete runs (by default, only complete runs are saved)",
+)
+def main(log: Path, output_dir: Path, force: bool, include_incomplete: bool) -> None:
     """Save Inspect AI evaluation results to jsonlines format."""
-    save_eval_results(log, output_dir, force)
+    save_eval_results(log, output_dir, force, include_incomplete)
 
 
 if __name__ == "__main__":
