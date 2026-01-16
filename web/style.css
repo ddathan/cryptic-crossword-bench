@@ -187,22 +187,18 @@ tr:hover {
     font-size: 0.8rem;
 }
 
-.samples {
-    color: var(--text-muted);
-}
-
-.model-args {
+.tokens {
     font-family: var(--font-mono);
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     color: var(--text-muted);
-    max-width: 150px;
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.model-args:empty::after {
-    content: '-';
+.cost {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    white-space: nowrap;
 }
 
 .date {
