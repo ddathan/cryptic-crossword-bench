@@ -1,6 +1,7 @@
 """Inspect AI evaluation for cryptic crossword solving."""
 
 import json
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,8 @@ from inspect_ai.dataset import Sample
 from inspect_ai.scorer import Score, Target, accuracy, scorer, stderr
 from inspect_ai.solver import generate, system_message
 from loguru import logger
+
+from ._prompts import SYSTEM_PROMPT, format_clue_prompt
 
 # Get the project root directory (parent of the eval folder)
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -24,13 +27,36 @@ def normalize_answer(answer: str) -> str:
     return "".join(c for c in answer.upper() if c.isalnum())
 
 
-@scorer(metrics=[accuracy(), stderr()])
+def extract_answer_from_tags(completion: str) -> str:
+    """Extract the answer from <answer></answer> tags in the completion.
+
+    Args:
+        completion: The full model completion text
+
+    Returns:
+        The extracted answer, or the full completion if no tags found
+    """
+    # Look for <answer>...</answer> pattern (case-insensitive)
+    pattern = r"<answer>(.*?)</answer>"
+    match = re.search(pattern, completion, re.IGNORECASE | re.DOTALL)
+
+    if match:
+        return match.group(1).strip()
+
+    # Fallback: return the full completion stripped
+    return completion.strip()
+
+
+@scorer(metrics=[accuracy(), stderr()])  # type: ignore[arg-type]
 def cryptic_scorer() -> Callable[[Any, Target], Score]:
     """Score cryptic crossword answers with exact match after normalization."""
 
     async def score(state: Any, target: Target) -> Score:
-        # Get the model's answer
-        model_answer = state.output.completion
+        # Get the full model completion
+        full_completion = state.output.completion
+
+        # Extract the answer from <answer> tags
+        model_answer = extract_answer_from_tags(full_completion)
 
         # Normalize both answers
         normalized_model = normalize_answer(model_answer)
@@ -45,7 +71,7 @@ def cryptic_scorer() -> Callable[[Any, Target], Score]:
             explanation=f"Model: {model_answer} | Expected: {target.text} | Match: {correct}",
         )
 
-    return score
+    return score  # type: ignore[return-value]
 
 
 def load_crossword_samples(benchmark_file: Path) -> list[Sample]:
@@ -64,16 +90,8 @@ def load_crossword_samples(benchmark_file: Path) -> list[Sample]:
         answer_length = clue_data["answer_length"]
         answer = clue_data["answer"]
 
-        # Format the answer length hint
-        length_hint = "-".join(str(n) for n in answer_length) + " letters"
-
-        # Create the prompt
-        prompt = f"""Solve this cryptic crossword clue:
-
-Clue: {clue_text}
-Answer length: {length_hint}
-
-Provide only the answer word(s), with no explanation or additional text."""
+        # Create the prompt using the template
+        prompt = format_clue_prompt(clue_text, answer_length)
 
         samples.append(
             Sample(
@@ -96,16 +114,8 @@ Provide only the answer word(s), with no explanation or additional text."""
         answer_length = clue_data["answer_length"]
         answer = clue_data["answer"]
 
-        # Format the answer length hint
-        length_hint = "-".join(str(n) for n in answer_length) + " letters"
-
-        # Create the prompt
-        prompt = f"""Solve this cryptic crossword clue:
-
-Clue: {clue_text}
-Answer length: {length_hint}
-
-Provide only the answer word(s), with no explanation or additional text."""
+        # Create the prompt using the template
+        prompt = format_clue_prompt(clue_text, answer_length)
 
         samples.append(
             Sample(
@@ -154,12 +164,7 @@ def cryptic_crossword(benchmark_file: str | None = None) -> Task:
     return Task(
         dataset=all_samples,
         plan=[
-            system_message(
-                """You are an expert at solving cryptic crossword puzzles.
-Cryptic crosswords contain clues that have both a definition and wordplay component.
-Your task is to solve each clue and provide only the answer word(s).
-Be concise - provide only the answer without explanation."""
-            ),
+            system_message(SYSTEM_PROMPT),
             generate(),
         ],
         scorer=cryptic_scorer(),
