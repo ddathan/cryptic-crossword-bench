@@ -6,7 +6,102 @@ from pathlib import Path
 # Paths
 PROJECT_ROOT = Path(__file__).parent.parent
 RESULTS_DIR = PROJECT_ROOT / "results"
+LOGS_DIR = PROJECT_ROOT / "logs"
 OUTPUT_FILE = Path(__file__).parent / "results.json"
+
+# API pricing per 1M tokens (USD)
+MODEL_PRICING: dict[str, dict[str, float]] = {
+    # Anthropic models
+    "anthropic/claude-opus-4": {"input": 15.0, "output": 75.0},
+    "anthropic/claude-sonnet-4": {"input": 3.0, "output": 15.0},
+    "anthropic/claude-haiku-4": {"input": 0.80, "output": 4.0},
+    # OpenAI models
+    "openai/gpt-5": {"input": 2.0, "output": 8.0},
+    "openai/gpt-4o": {"input": 2.50, "output": 10.0},
+    "openai/gpt-4.1": {"input": 2.0, "output": 8.0},
+    "openai/o3": {"input": 2.0, "output": 8.0},
+    "openai/o1": {"input": 15.0, "output": 60.0},
+    # Google models
+    "google/gemini-3": {"input": 1.25, "output": 10.0},
+    "google/gemini-2.5-pro": {"input": 1.25, "output": 10.0},
+    "google/gemini-2.5-flash": {"input": 0.15, "output": 0.60},
+    "google/gemini-2.0": {"input": 0.10, "output": 0.40},
+}
+
+
+def get_model_pricing(model: str) -> dict[str, float] | None:
+    """Get pricing for a model based on pattern matching."""
+    for pattern, pricing in MODEL_PRICING.items():
+        if model.startswith(pattern):
+            return pricing
+    return None
+
+
+def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float | None:
+    """Calculate the cost for a given token usage."""
+    pricing = get_model_pricing(model)
+    if not pricing:
+        return None
+    input_cost = (input_tokens / 1_000_000) * pricing["input"]
+    output_cost = (output_tokens / 1_000_000) * pricing["output"]
+    return input_cost + output_cost
+
+
+def extract_usage_from_log(log_file: str) -> dict[str, int | float | None]:
+    """Extract token usage from an Inspect AI log file.
+
+    Args:
+        log_file: Path to the log file (relative or absolute)
+
+    Returns:
+        Dictionary with token counts and cost, or empty values if extraction fails
+    """
+    input_tokens = 0
+    output_tokens = 0
+    total_tokens = 0
+    reasoning_tokens = 0
+
+    # Try to find the log file
+    log_path = Path(log_file)
+    if not log_path.is_absolute():
+        log_path = PROJECT_ROOT / log_file
+
+    if not log_path.exists():
+        # Try looking in the logs directory with just the filename
+        log_path = LOGS_DIR / Path(log_file).name
+
+    if not log_path.exists():
+        return {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+            "reasoning_tokens": 0,
+            "cost_usd": None,
+        }
+
+    try:
+        from inspect_ai.log import read_eval_log
+
+        log = read_eval_log(str(log_path))
+
+        if log.stats and log.stats.model_usage:
+            for model_usage in log.stats.model_usage.values():
+                input_tokens += model_usage.input_tokens or 0
+                output_tokens += model_usage.output_tokens or 0
+                total_tokens += model_usage.total_tokens or 0
+                if model_usage.reasoning_tokens:
+                    reasoning_tokens += model_usage.reasoning_tokens
+
+    except Exception as e:
+        print(f"Warning: Could not extract usage from {log_path}: {e}")
+
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": total_tokens,
+        "reasoning_tokens": reasoning_tokens,
+        "cost_usd": None,
+    }
 
 
 def get_best_result(results: list[dict]) -> dict:
@@ -115,6 +210,21 @@ def build_web_results() -> dict:
         model_args = result.get("model_args", {})
         metrics = result.get("metrics", {})
         usage = result.get("usage", {})
+
+        # If usage is missing or empty, try to extract from log file
+        total_tokens = usage.get("total_tokens")
+        if not usage or (isinstance(total_tokens, (int, float)) and total_tokens == 0):
+            log_file = result.get("metadata", {}).get("log_file", "")
+            if log_file:
+                usage = extract_usage_from_log(log_file)
+                # Calculate cost if we have tokens
+                model = result.get("model", "")
+                extracted_total = usage.get("total_tokens", 0)
+                if isinstance(extracted_total, (int, float)) and extracted_total > 0:
+                    input_tok = usage.get("input_tokens", 0)
+                    output_tok = usage.get("output_tokens", 0)
+                    if isinstance(input_tok, int) and isinstance(output_tok, int):
+                        usage["cost_usd"] = calculate_cost(model, input_tok, output_tok)
 
         web_result = {
             "model": result.get("model", "Unknown"),
