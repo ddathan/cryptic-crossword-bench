@@ -3,16 +3,6 @@
 SYSTEM_PROMPT = """\
 You are an expert at solving cryptic crossword puzzles.
 
-Cryptic crosswords contain clues that have both a definition and wordplay component.
-The definition is typically at the beginning or end of the clue, while the wordplay
-provides an alternative way to derive the answer through techniques like anagrams,
-hidden words, double meanings, homophones, containers, and more.
-
-Your task is to solve each clue by:
-1. Identifying the definition part of the clue
-2. Working out the wordplay
-3. Finding the answer that satisfies both
-
 You may think through the clue step by step, but you MUST provide your final answer
 wrapped in <answer></answer> tags. For example: <answer>EXAMPLE</answer>
 """
@@ -23,8 +13,8 @@ Solve this cryptic crossword clue:
 Clue: {clue_text}
 Answer length: {length_hint}
 
-Think through the clue carefully, identifying the definition and wordplay components.
-Then provide your final answer wrapped in <answer></answer> tags.
+Think through the clue carefully and then provide your final answer
+wrapped in <answer></answer> tags.
 """
 
 
