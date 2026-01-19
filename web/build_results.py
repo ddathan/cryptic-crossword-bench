@@ -12,20 +12,28 @@ OUTPUT_FILE = Path(__file__).parent / "results.json"
 # API pricing per 1M tokens (USD)
 MODEL_PRICING: dict[str, dict[str, float]] = {
     # Anthropic models
+    "anthropic/claude-opus-4.5": {"input": 5.0, "output": 25.0},
     "anthropic/claude-opus-4": {"input": 15.0, "output": 75.0},
+    "anthropic/claude-opus-4.1": {"input": 15.0, "output": 75.0},
+    "anthropic/claude-sonnet-4.5": {"input": 3.0, "output": 15.0},
     "anthropic/claude-sonnet-4": {"input": 3.0, "output": 15.0},
-    "anthropic/claude-haiku-4": {"input": 0.80, "output": 4.0},
-    # OpenAI models
-    "openai/gpt-5": {"input": 2.0, "output": 8.0},
+    "anthropic/claude-sonnet-3": {"input": 3.0, "output": 15.0},
+    "anthropic/claude-haiku-4.5": {"input": 1.0, "output": 5.0},
+    "anthropic/claude-haiku-3.5": {"input": 0.8, "output": 4.0},
+    "anthropic/claude-haiku-3": {"input": 0.25, "output": 1.25},
+    # OpenAI models,
+    "openai/gpt-5.2": {"input": 1.75, "output": 14.0},
+    "openai/gpt-5": {"input": 1.25, "output": 10},
     "openai/gpt-4o": {"input": 2.50, "output": 10.0},
     "openai/gpt-4.1": {"input": 2.0, "output": 8.0},
     "openai/o3": {"input": 2.0, "output": 8.0},
     "openai/o1": {"input": 15.0, "output": 60.0},
     # Google models
-    "google/gemini-3": {"input": 1.25, "output": 10.0},
+    "google/gemini-3-pro": {"input": 2.0, "output": 12.0},
+    "google/gemini-3-flash": {"input": 0.5, "output": 3.0},
     "google/gemini-2.5-pro": {"input": 1.25, "output": 10.0},
-    "google/gemini-2.5-flash": {"input": 0.15, "output": 0.60},
-    "google/gemini-2.0": {"input": 0.10, "output": 0.40},
+    "google/gemini-2.5-flash": {"input": 0.3, "output": 2.5},
+    "google/gemini-2.0-flash": {"input": 0.10, "output": 0.40},
 }
 
 
