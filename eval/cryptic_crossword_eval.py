@@ -1,5 +1,6 @@
 """Inspect AI evaluation for cryptic crossword solving."""
 
+import importlib.util
 import json
 import re
 from collections.abc import Callable
@@ -13,10 +14,17 @@ from inspect_ai.scorer import Score, Target, accuracy, scorer, stderr
 from inspect_ai.solver import generate, system_message
 from loguru import logger
 
-from ._prompts import SYSTEM_PROMPT, format_clue_prompt
-
 # Get the project root directory (parent of the eval folder)
 PROJECT_ROOT = Path(__file__).parent.parent
+
+# Import prompts - use importlib to handle both package and direct execution
+# This is needed because Inspect AI loads this file directly, not as a package
+_prompts_path = Path(__file__).parent / "_prompts.py"
+_prompts_spec = importlib.util.spec_from_file_location("_prompts", _prompts_path)
+_prompts_module = importlib.util.module_from_spec(_prompts_spec)  # type: ignore[arg-type]
+_prompts_spec.loader.exec_module(_prompts_module)  # type: ignore[union-attr]
+SYSTEM_PROMPT: str = _prompts_module.SYSTEM_PROMPT
+format_clue_prompt = _prompts_module.format_clue_prompt
 
 # Load environment variables from .env file
 load_dotenv(PROJECT_ROOT / ".env")
