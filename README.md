@@ -1,20 +1,22 @@
 # Cryptic Crossword Evaluation
 
-An LLM evaluation benchmark for testing the ability to solve cryptic crossword puzzles.
+A benchmark to test LLM's abilility to solve cryptic crosswords
 
 ## Overview
 
-This project extracts cryptic crossword clues and answers from PDF and PNG files to create a structured benchmark dataset for evaluating Large Language Models on their cryptic crossword solving abilities.
+This benchmark evaluates how well LLMs can solve cryptic crossword clues. At the start of 2025 I decided to try to get better at cryptic crosswords. Naturally, I attempted to use LLMs to help me by getting them to explain the clues and answers when I was stuck. What I found was that (at that time) LLMs were pretty bad at solving cryptic crosswords - they would often take illogical reasoning steps resulting in the wrong answer, or even when given the answer they would come up with spurious reasoning as to how to get there.
 
-## Features
+As of the start of 2026... they are a lot better, but still not perfect. See the results on the [website](https://ddathan.github.io/cryptic-crossword-bench/)
 
-- Extract clues from crossword PDF files using layout-aware parsing
-- Extract answers from completed crossword images using Claude's vision API
-- Generate structured JSON benchmark data combining clues and answers
-- Support for both standard cryptic and quick cryptic crosswords
-- Inspect AI evaluation framework for testing LLMs on cryptic crossword solving
-- Custom scoring with exact match (normalized for case and spacing)
-- Comprehensive metadata tracking (puzzle name, date, clue direction, etc.)
+## Disclaimer
+
+This was a side project with the majority of code written by Claude Code, as such there may be errors.
+
+## TODO
+- [ ] Test models at varying thinking levels / inference budgets
+- [ ] Add plot to website with x-axis showing token / cost
+- [ ] Test latest closed source models (Opus 4.6, GPT-codex 5.3)
+- [ ] Add SOTA open source models as a comparison
 
 ## Setup
 
@@ -94,7 +96,6 @@ Results are automatically saved to the `results/` directory in jsonlines format:
 - Each line contains a complete evaluation run
 - Accuracy and standard error from Inspect AI
 - Sample counts and metadata
-- Git-friendly format for tracking changes over time
 
 See [EVAL.md](EVAL.md) for detailed evaluation documentation.
 
@@ -183,11 +184,3 @@ Pre-commit hooks are configured to run linting and formatting automatically:
 uv run pre-commit install
 uv run pre-commit run --all-files
 ```
-
-## License
-
-[Add your license here]
-
-## Contributing
-
-[Add contribution guidelines here]
